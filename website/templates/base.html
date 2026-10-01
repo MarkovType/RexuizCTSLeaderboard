@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <link rel="icon" type="image/x-icon" href="https://rexuiz.com/images/slogo.png">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        {% block title %}Rexuiz CTS leaderboard{% endblock %}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+
+<header class="site-header">
+
+    <div class="header-inner">
+
+        <a class="logo" href="/">
+            <img width="160" height="40" src="https://rexuiz.com/images/tslogo.png"/>
+            <!--<span>REXUIZ</span>
+            <small>RECORDS</small>-->
+        </a>
+
+        <nav>
+            <a href="/">HOME</a>
+            <a href="/maps">MAPS</a>
+            <a href="/players">PLAYERS</a>
+        </nav>
+
+    </div>
+
+</header>
+
+
+<main class="container">
+
+    {% block content %}
+    {% endblock %}
+
+</main>
+
+
+<footer class="site-footer">
+    CTS leaderboard - <a href="https://rexuiz.com/" target="_blank">rexuiz.com</a> - Made by <a href="https://github.com/MarkovType" target="_blank">MarkovType</a>
+</footer>
+
+</body>
+</html>

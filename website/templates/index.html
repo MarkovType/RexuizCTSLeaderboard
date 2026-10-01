@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}CTS Records — Home{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+
+    <div>
+        <div class="eyebrow">REXUIZ CTS</div>
+        <h1>LEADERBOARD</h1>
+        <p>
+            Saiel #1
+        </p>
+    </div>
+
+</section>
+
+
+<div class="dashboard-grid">
+
+    <!-- Recent #1 changes -->
+
+    <section class="panel">
+
+        <div class="panel-title">
+            <span>RECENT WORLD RECORDS</span>
+            <span class="panel-mark">#01</span>
+        </div>
+
+        {% if recent_top1 %}
+
+        <div class="record-list">
+
+            {% for record in recent_top1 %}
+
+            <a
+                class="record-card record-card-with-date"
+                href="/map/{{ record.map_id }}"
+            >
+
+                <div class="record-rank">
+                    #1
+                </div>
+
+                <div class="record-main">
+
+                    <div class="record-map">
+                        {{ record.map_name }}
+                    </div>
+
+                    <div class="record-player">
+                        {{ record.player_name }}
+
+                        {% if record.name_used != record.player_name %}
+                            <span class="alias">
+                                {{ record.name_used }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                </div>
+
+                <div class="record-time">
+                    {{ record.time_text }}
+                </div>
+
+                <div class="record-date">
+                    {{ record.scraped_at[:10] }}
+                </div>
+
+            </a>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <div class="empty">
+            No record changes have been detected yet.
+        </div>
+
+        {% endif %}
+
+    </section>
+
+
+   <!-- <section class="panel">
+
+    <div class="panel-title">
+        <span>RECENT RECORD CHANGES</span>
+        <span class="panel-mark">DIFF</span>
+    </div>
+
+    {% if recent_records %}
+
+    <div class="record-list">
+
+        {% for record in recent_records %}
+
+        <a
+            class="record-card record-card-simple"
+            href="/map/{{ record.map_id }}"
+        >
+
+            <div class="record-rank">
+                #{{ record.rank }}
+            </div>
+
+            <div class="record-main">
+
+                <div class="record-map">
+                    {{ record.map_name }}
+                </div>
+
+                <div class="record-player">
+                    {{ record.player_name }}
+
+                    {% if record.name_used != record.player_name %}
+                        <span class="alias">
+                            {{ record.name_used }}
+                        </span>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <div class="record-change">
+
+                <div class="record-time">
+                    {{ record.time_text }}
+                </div>
+
+                {% if record.change_type == "NEW" %}
+
+                    <span class="change-new">
+                        NEW
+                    </span>
+
+                {% elif record.change_type == "TIME" %}
+
+                    <span class="change-time">
+                        {{ record.previous_time }}
+                        →
+                        {{ record.time_text }}
+                    </span>
+
+                {% elif record.change_type == "PLAYER" %}
+
+                    <span class="change-player">
+                        PLAYER
+                    </span>
+
+                {% elif record.change_type == "RANK" %}
+
+                    <span class="change-rank">
+                        RANK CHANGE
+                    </span>
+
+                {% else %}
+
+                    <span class="change-other">
+                        CHANGED
+                    </span>
+
+                {% endif %}
+
+            </div>
+
+        </a>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="empty">
+        No record changes detected.
+    </div>
+
+    {% endif %}
+
+</section>-->
+
+
+
+    <!-- Latest scrape -->
+
+    <section class="panel">
+
+        <div class="panel-title">
+            <span>LATEST SCRAPE</span>
+            <span class="panel-mark">SYNC</span>
+        </div>
+
+        {% if latest_scrape %}
+
+        <div class="big-date">
+            {{ latest_scrape.scraped_at[:10] }}
+        </div>
+
+        <div class="muted">
+            {{ latest_scrape.scraped_at[11:19] }} UTC
+        </div>
+
+        <div class="stat-grid">
+
+            <div>
+                <strong>
+                    {{ "{:,}".format(latest_scrape.total_maps) }}
+                </strong>
+                <span>MAPS</span>
+            </div>
+
+            <div>
+                <strong>
+                    {{ "{:,}".format(latest_scrape.total_records) }}
+                </strong>
+                <span>RECORDS</span>
+            </div>
+
+        </div>
+
+        {% else %}
+
+        <div class="empty">
+            No scrapes recorded.
+        </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- Top holders -->
+
+    <section class="panel panel-wide">
+
+        <div class="panel-title">
+            <span>TOP 10 RECORD HOLDERS</span>
+            <span class="panel-mark">LATEST</span>
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>PLAYER</th>
+                        <th>#1</th>
+                        <th>#2</th>
+                        <th>#3</th>
+                        <th>#4</th>
+                        <th>#5</th>
+                        <th>#6</th>
+                        <th>#7</th>
+                        <th>#8</th>
+                        <th>#9</th>
+                        <th>#10</th>
+                        <th>TOTAL</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                {% for player in top_holders %}
+
+                    <tr>
+
+                        <td class="rank">
+                            {{ loop.index }}
+                        </td>
+
+                        <td>
+                            <a
+                                class="player-link"
+                                href="/player/{{ player.id }}"
+                            >
+                                {{ player.canonical_name }}
+                            </a>
+                        </td>
+
+                        {% for n in range(1, 11) %}
+
+                        <td>
+                            {{ player["rank" ~ n] or 0 }}
+                        </td>
+
+                        {% endfor %}
+
+                        <td class="total">
+                            {{ player.total }}
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</div>
+
+{% endblock %}
+
+

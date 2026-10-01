@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}
+CTS Records — {{ map.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+
+    <div class="eyebrow">
+        MAP
+    </div>
+
+    <h1 class="map-title">
+        {{ map.name }}
+    </h1>
+
+</div>
+
+
+<section class="panel">
+
+    <div class="panel-title">
+        <span>CURRENT LEADERBOARD</span>
+        <span class="panel-mark">TOP 10</span>
+    </div>
+
+    {% if records %}
+
+    <div class="table-wrap">
+
+        <table class="leaderboard">
+
+            <thead>
+                <tr>
+                    <th>RANK</th>
+                    <th>PLAYER</th>
+                    <th>TIME</th>
+                    <th>NAME USED</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% for record in records %}
+
+                <tr
+                    class="
+                    {% if record.rank == 1 %}
+                        first-place
+                    {% elif record.rank == 2 %}
+                        second-place
+                    {% elif record.rank == 3 %}
+                        third-place
+                    {% endif %}
+                    "
+                >
+
+                    <td class="rank">
+                        #{{ record.rank }}
+                    </td>
+
+                    <td>
+                        <a
+                            class="player-link"
+                            href="/player/{{ record.player_id }}"
+                        >
+                            {{ record.player_name }}
+                        </a>
+                    </td>
+
+                    <td class="time">
+                        {{ record.time_text }}
+                    </td>
+
+                    <td class="muted">
+                        {{ record.name_used }}
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty">
+        This map has no recorded times.
+    </div>
+
+    {% endif %}
+
+</section>
+
+
+{% if chart %}
+
+<section class="panel">
+
+    <div class="panel-title">
+        <span>WORLD RECORD HISTORY</span>
+        <span class="panel-mark">#1</span>
+    </div>
+
+    <div class="chart-container">
+        {{ chart|safe }}
+    </div>
+
+</section>
+
+{% endif %}
+
+
+<section class="panel">
+
+    <div class="panel-title">
+        <span>HISTORY</span>
+    </div>
+
+    {% if history %}
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>DATE</th>
+                    <th>PLAYER</th>
+                    <th>TIME</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% for row in history %}
+
+                <tr>
+
+                    <td>
+                        {{ row.scraped_at[:10] }}
+                    </td>
+
+                    <td>
+                        <a
+                            class="player-link"
+                            href="/player/{{ row.player_id }}"
+                        >
+                            {{ row.player_name }}
+                        </a>
+                    </td>
+
+                    <td class="time">
+                        {{ row.time_text }}
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty">
+        No historical data.
+    </div>
+
+    {% endif %}
+
+</section>
+
+{% endblock %}

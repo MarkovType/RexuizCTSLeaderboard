@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}CTS Records — Maps{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+    <div class="eyebrow">DATABASE</div>
+    <h1>MAPS</h1>
+</div>
+
+
+<form class="search" method="get">
+
+    <input
+        type="text"
+        name="q"
+        value="{{ search }}"
+        placeholder="Search maps..."
+    >
+
+    <button type="submit">
+        SEARCH
+    </button>
+
+</form>
+
+
+<section class="panel">
+
+    <div class="map-grid">
+
+        {% for map in maps %}
+
+        <a
+            class="map-card"
+            href="/map/{{ map.id }}"
+        >
+            {{ map.name }}
+        </a>
+
+        {% else %}
+
+        <div class="empty">
+            No maps found.
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+
+{% if pages > 1 %}
+
+<div class="pagination">
+
+    {% if page > 1 %}
+        <a href="?q={{ search|urlencode }}&page={{ page - 1 }}">
+            &laquo; PREVIOUS
+        </a>
+    {% endif %}
+
+    <span>
+        PAGE {{ page }} / {{ pages }}
+    </span>
+
+    {% if page < pages %}
+        <a href="?q={{ search|urlencode }}&page={{ page + 1 }}">
+            NEXT &raquo;
+        </a>
+    {% endif %}
+
+</div>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}CTS Records — Players{% endblock %}
+
+{% block content %}
+
+<div class="page-heading">
+
+    <div class="eyebrow">
+        DATABASE
+    </div>
+
+    <h1>PLAYERS</h1>
+
+</div>
+
+
+<form class="search" method="get">
+
+    <input
+        type="text"
+        name="q"
+        value="{{ search }}"
+        placeholder="Search players..."
+    >
+
+    <button type="submit">
+        SEARCH
+    </button>
+
+</form>
+
+
+<section class="panel">
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>#</th>
+                    <th>PLAYER</th>
+                    <th>#1</th>
+                    <th>TOP 3</th>
+                    <th>TOP 10</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+            {% for player in players %}
+
+                <tr>
+
+                    <td class="rank">
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+                        <a
+                            class="player-link"
+                            href="/player/{{ player.id }}"
+                        >
+                            {{ player.canonical_name }}
+                        </a>
+                    </td>
+
+                    <td>
+                        {{ player.rank1 or 0 }}
+                    </td>
+
+                    <td>
+                        {{ player.top3 or 0 }}
+                    </td>
+
+                    <td class="total">
+                        {{ player.total or 0 }}
+                    </td>
+
+                </tr>
+
+            {% else %}
+
+                <tr>
+                    <td colspan="5">
+                        No players found.
+                    </td>
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+{% endblock %}
