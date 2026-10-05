@@ -104,8 +104,8 @@ Rexuiz CTS leaderboard - {{ map.name }}
 <section class="panel">
 
     <div class="panel-title">
-        <span>WORLD RECORD HISTORY</span>
-        <span class="panel-mark">#1</span>
+        <span>TOP 10 RECORD HISTORY</span>
+        <span class="panel-mark">LAST YEAR</span>
     </div>
 
     <div class="chart-container">
@@ -132,6 +132,7 @@ Rexuiz CTS leaderboard - {{ map.name }}
             <thead>
                 <tr>
                     <th>DATE</th>
+                    <th>RANK</th>
                     <th>PLAYER</th>
                     <th>TIME</th>
                 </tr>
@@ -145,6 +146,10 @@ Rexuiz CTS leaderboard - {{ map.name }}
 
                     <td>
                         {{ row.scraped_at[:10] }}
+                    </td>
+
+                    <td class="rank">
+                        #{{ row.rank }}
                     </td>
 
                     <td>
