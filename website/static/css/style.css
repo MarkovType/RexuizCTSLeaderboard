@@ -236,8 +236,7 @@ nav a:hover {
     display: grid;
 
     grid-template-columns:
-    minmax(0, 2fr)
-    minmax(280px, 1fr);
+    repeat(2, minmax(0, 1fr));
 
     gap: 20px;
 }

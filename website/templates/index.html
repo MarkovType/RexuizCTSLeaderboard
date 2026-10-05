@@ -10,7 +10,7 @@
         <div class="eyebrow">REXUIZ CTS</div>
         <h1>LEADERBOARD</h1>
         <p>
-            Saiel #1
+            From <a href="https://cts.rexuiz.com" target="_blank">cts.rexuiz.com</a>
         </p>
     </div>
 
@@ -86,104 +86,71 @@
     </section>
 
 
-   <!-- <section class="panel">
+    <!-- Recent changes of ANY rank -->
 
-    <div class="panel-title">
-        <span>RECENT RECORD CHANGES</span>
-        <span class="panel-mark">DIFF</span>
-    </div>
+    <section class="panel">
 
-    {% if recent_records %}
+        <div class="panel-title">
+            <span>RECENT RECORD CHANGES</span>
+            <span class="panel-mark">LATEST 10</span>
+        </div>
 
-    <div class="record-list">
+        {% if recent_records %}
 
-        {% for record in recent_records %}
+        <div class="record-list">
 
-        <a
-            class="record-card record-card-simple"
-            href="/map/{{ record.map_id }}"
-        >
+            {% for record in recent_records %}
 
-            <div class="record-rank">
-                #{{ record.rank }}
-            </div>
+            <a
+                class="record-card record-card-with-date"
+                href="/map/{{ record.map_id }}"
+            >
 
-            <div class="record-main">
-
-                <div class="record-map">
-                    {{ record.map_name }}
+                <div class="record-rank">
+                    #{{ record.rank }}
                 </div>
 
-                <div class="record-player">
-                    {{ record.player_name }}
+                <div class="record-main">
 
-                    {% if record.name_used != record.player_name %}
-                        <span class="alias">
-                            {{ record.name_used }}
-                        </span>
-                    {% endif %}
+                    <div class="record-map">
+                        {{ record.map_name }}
+                    </div>
+
+                    <div class="record-player">
+                        {{ record.player_name }}
+
+                        {% if record.name_used != record.player_name %}
+                            <span class="alias">
+                                {{ record.name_used }}
+                            </span>
+                        {% endif %}
+                    </div>
+
                 </div>
-
-            </div>
-
-            <div class="record-change">
 
                 <div class="record-time">
                     {{ record.time_text }}
                 </div>
 
-                {% if record.change_type == "NEW" %}
+                <div class="record-date">
+                    {{ record.scraped_at[:10] }}
+                </div>
 
-                    <span class="change-new">
-                        NEW
-                    </span>
+            </a>
 
-                {% elif record.change_type == "TIME" %}
+            {% endfor %}
 
-                    <span class="change-time">
-                        {{ record.previous_time }}
-                        →
-                        {{ record.time_text }}
-                    </span>
+        </div>
 
-                {% elif record.change_type == "PLAYER" %}
+        {% else %}
 
-                    <span class="change-player">
-                        PLAYER
-                    </span>
+        <div class="empty">
+            No record changes have been detected.
+        </div>
 
-                {% elif record.change_type == "RANK" %}
+        {% endif %}
 
-                    <span class="change-rank">
-                        RANK CHANGE
-                    </span>
-
-                {% else %}
-
-                    <span class="change-other">
-                        CHANGED
-                    </span>
-
-                {% endif %}
-
-            </div>
-
-        </a>
-
-        {% endfor %}
-
-    </div>
-
-    {% else %}
-
-    <div class="empty">
-        No record changes detected.
-    </div>
-
-    {% endif %}
-
-</section>-->
-
+    </section>
 
 
     <!-- Latest scrape -->
@@ -311,5 +278,3 @@
 </div>
 
 {% endblock %}
-
-
