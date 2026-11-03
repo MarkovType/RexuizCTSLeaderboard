@@ -1076,7 +1076,7 @@ def make_player_top3_svg(history):
     padding_left = 55
     padding_right = 30
     padding_top = 30
-    padding_bottom = 40
+    padding_bottom = 60
 
     graph_width = width - padding_left - padding_right
     graph_height = height - padding_top - padding_bottom
@@ -2531,7 +2531,7 @@ def make_player_history_svg(history):
     padding_left = 55
     padding_right = 30
     padding_top = 30
-    padding_bottom = 40
+    padding_bottom = 60
 
     graph_width = (
         width
