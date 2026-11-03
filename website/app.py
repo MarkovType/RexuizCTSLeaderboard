@@ -261,7 +261,7 @@ def index():
         ORDER BY
             h.id DESC
 
-        LIMIT 3
+        LIMIT 10
         """
     )
 
@@ -596,7 +596,7 @@ def map_page(map_id):
     # collection is expected.
     # --------------------------------------------------------
 
-    chart = make_record_history_svg(
+    chart = make_record_history_svg_focused(
         map_id
     )
 
@@ -912,14 +912,13 @@ def player_page(player_id):
     # after each scrape.
     # --------------------------------------------------------
 
-    history = reconstruct_player_history(
-        player_id
-    )
-
-    chart = make_player_history_svg(
-        history
-    )
-
+    history = reconstruct_player_history(player_id)
+    chart = make_player_history_svg(history)
+    
+    # NEW: Top #3 history
+    top3_history = reconstruct_player_top3_history(player_id)
+    top3_chart = make_player_top3_svg(top3_history)
+    
     return render_template(
         "player.html",
         player=player,
@@ -928,8 +927,195 @@ def player_page(player_id):
         statistics=statistics,
         history=history,
         chart=chart,
+        top3_history=top3_history,
+        top3_chart=top3_chart,
     )
 
+def reconstruct_player_top3_history(player_id):
+    """
+    Reconstruct how many positions a player held at each rank (1, 2, 3)
+    after every scrape.
+
+    Returns separate counts for rank 1, rank 2, and rank 3.
+    """
+
+    rows = query_all(
+        """
+        SELECT
+            h.scrape_id,
+            h.map_id,
+            h.rank,
+            h.player_alias_id,
+            s.scraped_at,
+            pa.player_id
+        FROM record_history h
+        JOIN scrapes s ON s.id = h.scrape_id
+        JOIN player_aliases pa ON pa.id = h.player_alias_id
+        ORDER BY h.scrape_id, h.id
+        """
+    )
+
+    # Current holder of every map/rank.
+    state = {}
+
+    # Number of positions currently held by each player, per rank.
+    player_rank_counts = {1: defaultdict(int), 2: defaultdict(int), 3: defaultdict(int)}
+
+    result = []
+    current_scrape_id = None
+    current_scrape_at = None
+
+    def append_snapshot(scrape_id, scraped_at):
+        result.append({
+            "scrape_id": scrape_id,
+            "scraped_at": scraped_at,
+            "rank1_count": player_rank_counts[1].get(player_id, 0),
+            "rank2_count": player_rank_counts[2].get(player_id, 0),
+            "rank3_count": player_rank_counts[3].get(player_id, 0),
+        })
+
+    for row in rows:
+        scrape_id = row["scrape_id"]
+
+        if current_scrape_id is not None and scrape_id != current_scrape_id:
+            append_snapshot(current_scrape_id, current_scrape_at)
+
+        current_scrape_id = scrape_id
+        current_scrape_at = row["scraped_at"]
+
+        key = (row["map_id"], row["rank"])
+        old_player_id = state.get(key)
+        new_player_id = row["player_id"]
+
+        if old_player_id == new_player_id:
+            continue
+
+        rank = row["rank"]
+
+        # Remove old holder (if it was a top-3 position)
+        if old_player_id is not None and 1 <= rank <= 3:
+            player_rank_counts[rank][old_player_id] -= 1
+
+        # Add new holder (if it's a top-3 position)
+        state[key] = new_player_id
+        if 1 <= rank <= 3:
+            player_rank_counts[rank][new_player_id] += 1
+
+    if current_scrape_id is not None:
+        append_snapshot(current_scrape_id, current_scrape_at)
+
+    return result
+
+def make_player_top3_svg(history):
+    """
+    Render a graph showing the evolution of a player's rank 1, 2, and 3 records count.
+    Each rank gets its own smooth line.
+    """
+
+    width = 900
+    height = 300
+
+    if not history:
+        return ""
+
+    # Extract separate series for each rank
+    rank1_values = [row["rank1_count"] for row in history]
+    rank2_values = [row["rank2_count"] for row in history]
+    rank3_values = [row["rank3_count"] for row in history]
+
+    # Find global maximum across all ranks
+    all_values = rank1_values + rank2_values + rank3_values
+
+    if not all_values:
+        return ""
+
+    maximum = max(all_values)
+
+    if maximum <= 0:
+        return ""
+
+    padding_left = 55
+    padding_right = 30
+    padding_top = 30
+    padding_bottom = 40
+
+    graph_width = width - padding_left - padding_right
+    graph_height = height - padding_top - padding_bottom
+
+    svg = []
+
+    svg.append(f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="Player rank 1, 2, 3 records evolution">')
+    svg.append(f'<rect width="{width}" height="{height}" fill="#090909"/>')
+
+    # Horizontal grid
+    for i in range(5):
+        y = padding_top + graph_height * i / 4
+        value = maximum - maximum * i / 4
+        svg.append(f'<line x1="{padding_left}" y1="{y:.1f}" x2="{width - padding_right}" y2="{y:.1f}" stroke="#282828"/>')
+        svg.append(f'<text x="{padding_left - 8}" y="{y + 4:.1f}" text-anchor="end" fill="#888" font-size="11">{int(value)}</text>')
+
+    # Color scheme for each rank
+    colors = {
+        1: "#ffb000",  # Gold for #1
+        2: "#e04a22",  # Red for #2
+        3: "#4fc3f7",  # Blue for #3
+    }
+
+    # Draw smooth line for each rank
+    count = len(history)
+
+    for rank in [1, 2, 3]:
+        values = {
+            1: rank1_values,
+            2: rank2_values,
+            3: rank3_values,
+        }[rank]
+
+        color = colors[rank]
+        path_parts = []
+
+        for i, value in enumerate(values):
+            if count == 1:
+                x = padding_left + graph_width / 2
+            else:
+                x = padding_left + graph_width * i / (count - 1)
+
+            y = padding_top + graph_height - (value / maximum) * graph_height
+
+            if i == 0:
+                # Start point
+                path_parts.append(f"M {x:.1f} {y:.1f}")
+            else:
+                # Get previous point for smooth curve
+                prev_x = padding_left + graph_width * (i - 1) / (count - 1) if count > 1 else x
+                prev_y = padding_top + graph_height - (values[i - 1] / maximum) * graph_height
+
+                # Control points for cubic Bezier curve (smooth)
+                c1_x = prev_x + (x - prev_x) / 3
+                c1_y = prev_y
+                c2_x = prev_x + (x - prev_x) * 2 / 3
+                c2_y = y
+
+                path_parts.append(f"C {c1_x:.1f} {c1_y:.1f} {c2_x:.1f} {c2_y:.1f} {x:.1f} {y:.1f}")
+
+        if path_parts:
+            svg.append(
+                f'<path d="{"".join(path_parts)}" '
+                f'fill="none" stroke="{color}" stroke-width="2" '
+                f'stroke-linecap="round" stroke-linejoin="round"/>'
+            )
+
+    # Legend
+    legend_y = height - 35
+    legend_spacing = 120
+
+    for rank, color in colors.items():
+        x = padding_left + (rank - 1) * legend_spacing
+        svg.append(f'<circle cx="{x:.1f}" cy="{legend_y:.1f}" r="4" fill="{color}"/>')
+        svg.append(f'<text x="{x + 8:.1f}" y="{legend_y + 4:.1f}" fill="#888" font-size="10">#{rank}</text>')
+
+    svg.append("</svg>")
+    return "".join(svg)
 
 # ============================================================
 # PLAYER HISTORY RECONSTRUCTION
@@ -1099,6 +1285,573 @@ def reconstruct_player_history(player_id):
 # ============================================================
 # SVG: MAP RECORD HISTORY
 # ============================================================
+
+def make_record_history_svg_focused(map_id):
+    """
+    Render the Top-10 leaderboard history for one map with time-focused
+    filtering. Points with extreme time differences are skipped to improve
+    visibility of other lines.
+
+    Uses a dynamic threshold: 25% of the overall time range.
+    If |time_current - time_previous| > threshold, the point is skipped.
+    """
+
+    # --------------------------------------------------------
+    # Load complete history for this map.
+    # --------------------------------------------------------
+
+    history = query_all(
+        """
+        SELECT
+            h.id,
+            h.scrape_id,
+            h.rank,
+
+            h.time_seconds,
+            h.time_text,
+
+            s.scraped_at,
+
+            p.id AS player_id,
+            p.canonical_name AS player_name,
+
+            pa.name AS name_used
+
+        FROM record_history h
+
+        JOIN scrapes s
+            ON s.id = h.scrape_id
+
+        JOIN maps m
+            ON m.id = h.map_id
+
+        JOIN player_aliases pa
+            ON pa.id = h.player_alias_id
+
+        JOIN players p
+            ON p.id = pa.player_id
+
+        WHERE h.map_id = ?
+
+        ORDER BY
+            h.scrape_id,
+            h.id
+        """,
+        (map_id,)
+    )
+
+    if not history:
+        return ""
+
+    # --------------------------------------------------------
+    # SVG dimensions.
+    # --------------------------------------------------------
+
+    width = 1200
+    height = 560
+
+    padding_left = 75
+    padding_right = 30
+    padding_top = 35
+    padding_bottom = 60
+
+    graph_width = (
+        width
+        - padding_left
+        - padding_right
+    )
+
+    graph_height = (
+        height
+        - padding_top
+        - padding_bottom
+    )
+
+    # --------------------------------------------------------
+    # Group changes by scrape.
+    # --------------------------------------------------------
+
+    scrapes = {}
+
+    for row in history:
+
+        scrape_id = row["scrape_id"]
+
+        if scrape_id not in scrapes:
+
+            scrapes[scrape_id] = {
+                "scraped_at":
+                    row["scraped_at"],
+
+                "events": [],
+            }
+
+        scrapes[
+            scrape_id
+        ]["events"].append(
+            row
+        )
+
+    scrape_ids = list(
+        scrapes.keys()
+    )
+
+    scrape_ids.sort()
+
+    if not scrape_ids:
+        return ""
+
+    # --------------------------------------------------------
+    # Current reconstructed state.
+    # --------------------------------------------------------
+
+    state = {
+        rank: None
+        for rank in range(1, 11)
+    }
+
+    # --------------------------------------------------------
+    # Return only the graph-visible state.
+    # --------------------------------------------------------
+
+    def visual_state():
+
+        return tuple(
+            (
+                state[rank]["time_seconds"]
+                if state[rank] is not None
+                else None
+            )
+            for rank in range(1, 11)
+        )
+
+    # --------------------------------------------------------
+    # Reconstruct snapshots.
+    # --------------------------------------------------------
+
+    snapshots = []
+
+    previous_visual_state = None
+
+    for scrape_id in scrape_ids:
+
+        scrape = scrapes[
+            scrape_id
+        ]
+
+        for row in scrape["events"]:
+
+            rank = row["rank"]
+
+            if rank < 1 or rank > 10:
+                continue
+
+            state[rank] = {
+                "time_seconds":
+                    row["time_seconds"],
+
+                "time_text":
+                    row["time_text"],
+
+                "player_id":
+                    row["player_id"],
+
+                "player_name":
+                    row["player_name"],
+
+                "name_used":
+                    row["name_used"],
+            }
+
+        current_visual_state = (
+            visual_state()
+        )
+
+        if (
+            previous_visual_state is None
+            or current_visual_state
+            != previous_visual_state
+        ):
+
+            snapshots.append(
+                {
+                    "scrape_id":
+                        scrape_id,
+
+                    "scraped_at":
+                        scrape["scraped_at"],
+
+                    "values":
+                        current_visual_state,
+                }
+            )
+
+            previous_visual_state = (
+                current_visual_state
+            )
+
+    if not snapshots:
+        return ""
+
+    # --------------------------------------------------------
+    # Determine global Y-axis time range.
+    # --------------------------------------------------------
+
+    all_values = []
+
+    for snapshot in snapshots:
+
+        for value in snapshot["values"]:
+
+            if value is not None:
+                all_values.append(
+                    value
+                )
+
+    if not all_values:
+        return ""
+
+    minimum = min(
+        all_values
+    )
+
+    maximum = max(
+        all_values
+    )
+
+    # --------------------------------------------------------
+    # Avoid zero-height scale.
+    # --------------------------------------------------------
+
+    if minimum == maximum:
+
+        minimum -= 1
+        maximum += 1
+
+    # --------------------------------------------------------
+    # Add a small amount of visual padding.
+    # --------------------------------------------------------
+
+    value_range = (
+        maximum - minimum
+    )
+
+    minimum -= (
+        value_range * 0.04
+    )
+
+    maximum += (
+        value_range * 0.04
+    )
+
+    # --------------------------------------------------------
+    # Calculate threshold for filtering extreme differences.
+    # Threshold = 25% of the overall time range.
+    # --------------------------------------------------------
+
+    threshold = value_range * 0.25
+
+    # --------------------------------------------------------
+    # X coordinate.
+    # --------------------------------------------------------
+
+    snapshot_count = len(
+        snapshots
+    )
+
+    def x_for_index(index):
+
+        if snapshot_count <= 1:
+
+            return (
+                padding_left
+                + graph_width / 2
+            )
+
+        return (
+            padding_left
+            + graph_width
+            * index
+            / (snapshot_count - 1)
+        )
+
+    # --------------------------------------------------------
+    # Y coordinate.
+    # --------------------------------------------------------
+
+    def y_for_value(value):
+
+        return (
+            padding_top
+            + (
+                (maximum - value)
+                / (maximum - minimum)
+            )
+            * graph_height
+        )
+
+    # --------------------------------------------------------
+    # Start SVG.
+    # --------------------------------------------------------
+
+    svg = []
+
+    svg.append(
+        f'<svg class=\"chart\" '
+        f'viewBox=\"0 0 {width} {height}\" '
+        f'role=\"img\" '
+        f'aria-label=\"Top 10 record history (time-focused)\">'
+    )
+
+    svg.append(
+        f'<rect '
+        f'width=\"{width}\" '
+        f'height=\"{height}\" '
+        f'fill=\"#090909\"/>'
+    )
+
+    # --------------------------------------------------------
+    # Horizontal grid.
+    # --------------------------------------------------------
+
+    for i in range(5):
+
+        y = (
+            padding_top
+            + graph_height * i / 4
+        )
+
+        value = (
+            maximum
+            - (
+                maximum - minimum
+            ) * i / 4
+        )
+
+        svg.append(
+            f'<line '
+            f'x1=\"{padding_left}\" '
+            f'y1=\"{y:.1f}\" '
+            f'x2=\"{width - padding_right}\" '
+            f'y2=\"{y:.1f}\" '
+            f'stroke=\"#282828\" '
+            f'stroke-width=\"1\"/>'
+        )
+
+        svg.append(
+            f'<text '
+            f'x=\"{padding_left - 10}\" '
+            f'y=\"{y + 4:.1f}\" '
+            f'text-anchor=\"end\" '
+            f'fill=\"#888\" '
+            f'font-size=\"11\">'
+            f'{html.escape(format_time(value))}'
+            f'</text>'
+        )
+
+    # --------------------------------------------------------
+    # Rank colors.
+    # --------------------------------------------------------
+
+    colors = [
+        "#ffb000",
+        "#e04a22",
+        "#4fc3f7",
+        "#81c784",
+        "#ba68c8",
+        "#ff8a65",
+        "#64b5f6",
+        "#aed581",
+        "#f06292",
+        "#90a4ae",
+    ]
+
+    # --------------------------------------------------------
+    # Draw each rank with time-difference filtering.
+    # --------------------------------------------------------
+
+    for rank in range(1, 11):
+
+        color = colors[
+            rank - 1
+        ]
+
+        points = []
+        previous_value = None
+
+        for index, snapshot in enumerate(
+            snapshots
+        ):
+
+            value = snapshot[
+                "values"
+            ][rank - 1]
+
+            if value is None:
+                previous_value = None
+                continue
+
+            # Skip if this is an extreme outlier
+            if previous_value is not None:
+                diff = abs(value - previous_value)
+                if diff > threshold:
+                    # Skip this point - it's too far from previous
+                    previous_value = value
+                    continue
+
+            x = x_for_index(
+                index
+            )
+
+            y = y_for_value(
+                value
+            )
+
+            points.append(
+                (
+                    x,
+                    y
+                )
+            )
+            previous_value = value
+
+        if not points:
+            continue
+
+        # ----------------------------------------------------
+        # Step path.
+        # ----------------------------------------------------
+
+        # This is the SMOOTH CURVE code (creates smooth lines):
+        path_parts = []
+
+        for i, (x, y) in enumerate(points):
+            if i == 0:
+                path_parts.append(f"M {x:.1f} {y:.1f}")
+            else:
+                prev_x, prev_y = points[i-1]
+
+                # Control points for smooth cubic Bezier curve
+                c1_x = prev_x + (x - prev_x) / 3
+                c1_y = prev_y
+                c2_x = prev_x + (x - prev_x) * 2 / 3
+                c2_y = y
+
+                path_parts.append(
+                    f"C {c1_x:.1f} {c1_y:.1f} {c2_x:.1f} {c2_y:.1f} {x:.1f} {y:.1f}"
+                )
+
+        svg.append(
+            f'<path '
+            f'd="{"".join(path_parts)}" '
+            f'fill="none" '
+            f'stroke="{color}" '
+            f'stroke-width="2" '
+            f'stroke-opacity="0.85" '
+            f'stroke-linejoin="round"/>'
+        )
+
+        # ----------------------------------------------------
+        # Points.
+        # ----------------------------------------------------
+
+        for x, y in points:
+            svg.append(
+                f'<circle '
+                f'cx="{x:.1f}" '
+                f'cy="{y:.1f}" '
+                f'r="3" '
+                f'fill="{color}" '
+                f'stroke="#090909" '
+                f'stroke-width="1"/>'
+            )
+
+    # Date labels.
+    # --------------------------------------------------------
+
+    first_date = (
+        snapshots[0]["scraped_at"]
+    )
+
+    last_date = (
+        snapshots[-1]["scraped_at"]
+    )
+
+    svg.append(
+        f'<text '
+        f'x=\"{padding_left}\" '
+        f'y=\"{height - 18}\" '
+        f'fill=\"#666\" '
+        f'font-size=\"10\">'
+        f'{html.escape(first_date[:10])}'
+        f'</text>'
+    )
+
+    svg.append(
+        f'<text '
+        f'x=\"{width - padding_right}\" '
+        f'y=\"{height - 18}\" '
+        f'text-anchor=\"end\" '
+        f'fill=\"#666\" '
+        f'font-size=\"10\">'
+        f'{html.escape(last_date[:10])}'
+        f'</text>'
+    )
+
+    # --------------------------------------------------------
+    # Legend.
+    # --------------------------------------------------------
+
+    legend_y = (
+        height - 42
+    )
+
+    legend_width = (
+        width
+        - padding_left
+        - padding_right
+    )
+
+    item_width = (
+        legend_width / 10
+    )
+
+    for index, rank in enumerate(
+        range(1, 11)
+    ):
+
+        color = colors[
+            index
+        ]
+
+        x = (
+            padding_left
+            + item_width * index
+        )
+
+        svg.append(
+            f'<circle '
+            f'cx=\"{x:.1f}\" '
+            f'cy=\"{legend_y:.1f}\" '
+            f'r=\"4\" '
+            f'fill=\"{color}\"/>'
+        )
+
+        svg.append(
+            f'<text '
+            f'x=\"{x + 8:.1f}\" '
+            f'y=\"{legend_y + 4:.1f}\" '
+            f'fill=\"#888\" '
+            f'font-size=\"10\">'
+            f'#{rank}'
+            f'</text>'
+        )
+
+    svg.append(
+        "</svg>"
+    )
+
+    return "".join(svg)
 
 def make_record_history_svg(map_id):
     """
@@ -1569,30 +2322,38 @@ def make_record_history_svg(map_id):
         #   vertical   = state transition
         # ----------------------------------------------------
 
-        path = [
-            f"M {points[0][0]:.1f} "
-            f"{points[0][1]:.1f}"
-        ]
+        path_parts = []
 
-        for x, y in points[1:]:
+        for i, value in enumerate(values):
+            if count == 1:
+                x = padding_left + graph_width / 2
+            else:
+                x = padding_left + graph_width * i / (count - 1)
 
-            path.append(
-                f"H {x:.1f}"
+            y = padding_top + graph_height - (value / maximum) * graph_height
+
+            if i == 0:
+                # Start point
+                path_parts.append(f"M {x:.1f} {y:.1f}")
+            else:
+                # Get previous point for smooth curve
+                prev_x = padding_left + graph_width * (i - 1) / (count - 1) if count > 1 else x
+                prev_y = padding_top + graph_height - (values[i - 1] / maximum) * graph_height
+
+                # Control points for cubic Bezier curve (smooth)
+                c1_x = prev_x + (x - prev_x) / 3
+                c1_y = prev_y
+                c2_x = prev_x + (x - prev_x) * 2 / 3
+                c2_y = y
+
+                path_parts.append(f"C {c1_x:.1f} {c1_y:.1f} {c2_x:.1f} {c2_y:.1f} {x:.1f} {y:.1f}")
+
+        if path_parts:
+            svg.append(
+                f'<path d="{"".join(path_parts)}" '
+                f'fill="none" stroke="{color}" stroke-width="2" '
+                f'stroke-linecap="round" stroke-linejoin="round"/>'
             )
-
-            path.append(
-                f"V {y:.1f}"
-            )
-
-        svg.append(
-            f'<path '
-            f'd="{" ".join(path)}" '
-            f'fill="none" '
-            f'stroke="{color}" '
-            f'stroke-width="2" '
-            f'stroke-opacity="0.85" '
-            f'stroke-linejoin="round"/>'
-        )
 
         # ----------------------------------------------------
         # Points.
