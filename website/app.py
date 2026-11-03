@@ -1588,7 +1588,7 @@ def make_record_history_svg_focused(map_id):
     # Threshold = 25% of the overall time range.
     # --------------------------------------------------------
 
-    threshold = value_range * 0.25
+    threshold = value_range * 0.60
 
     # --------------------------------------------------------
     # X coordinate.
