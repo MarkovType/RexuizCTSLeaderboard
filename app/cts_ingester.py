@@ -904,6 +904,40 @@ def migrate_legacy_database(conn):
         "It is no longer used by this application."
     )
 
+def player_has_duplicate_on_map(
+    conn,
+    map_id,
+    player_alias_id,
+    exclude_rank=None
+):
+    """
+    Check if a player already holds a position on this map.
+
+    A player should only hold ONE position per map. This function
+    checks if the player already exists in any rank on the given map.
+
+    Args:
+        conn: Database connection
+        map_id: The map ID to check
+        player_alias_id: The player alias ID to check
+        exclude_rank: If provided, ignore this rank (used when updating)
+
+    Returns:
+        The rank where the player already exists, or None if not found
+    """
+    cursor = conn.execute(
+        """
+        SELECT rank
+        FROM records
+        WHERE map_id = ?
+          AND player_alias_id = ?
+          AND (? IS NULL OR rank != ?)
+        LIMIT 1
+        """,
+        (map_id, player_alias_id, exclude_rank, exclude_rank)
+    )
+    row = cursor.fetchone()
+    return row["rank"] if row else None
 
 def ensure_database_schema(conn):
     """
@@ -1302,7 +1336,36 @@ def save_record_change(
     replace the current state.
 
     Both operations occur inside the caller's transaction.
+
+    VALIDATION: Ensures a player only holds ONE position per map.
+    If the player already exists in a different rank on this map,
+    the old record is removed first.
     """
+
+    # Check if this player already holds a different rank on this map
+    existing_rank = player_has_duplicate_on_map(
+        conn,
+        map_id,
+        player_alias_id,
+        exclude_rank=rank
+    )
+
+    if existing_rank is not None:
+        # Remove the duplicate - player can only hold one position per map
+        conn.execute(
+            """
+            DELETE FROM records
+            WHERE map_id = ?
+              AND player_alias_id = ?
+              AND rank = ?
+            """,
+            (map_id, player_alias_id, existing_rank)
+        )
+        print(
+            f"  WARNING: Removed duplicate - "
+            f"Player {player_alias_id} had both rank {existing_rank} and {rank} "
+            f"on map {map_id}. Keeping rank {rank}."
+        )
 
     conn.execute(
         """
@@ -1351,7 +1414,6 @@ def save_record_change(
             time_seconds
         )
     )
-
 
 # ============================================================
 # IMPORT
