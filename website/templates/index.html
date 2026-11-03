@@ -16,6 +16,44 @@
 
 </section>
 
+{% if top1_champion or overall_champion %}
+<div class="champions-board">
+
+    <section class="panel">
+        <div class="panel-title">
+            <span>CHAMPIONS</span>
+            <span class="panel-mark">REXUIZ</span>
+        </div>
+
+        <div class="champions-grid">
+            {% if top1_champion %}
+            <div class="champion-card">
+                <div class="champion-title">WORLD RECORD CHAMPION</div>
+                <div class="champion-name">
+                    <a href="/player/{{ top1_champion.id }}">{{ top1_champion.canonical_name }}</a>
+                </div>
+                <div class="champion-stat">
+                    {{ top1_champion.rank1_count }} World Records
+                </div>
+            </div>
+            {% endif %}
+
+            {% if overall_champion %}
+            <div class="champion-card">
+                <div class="champion-title">OVERALL CHAMPION</div>
+                <div class="champion-name">
+                    <a href="/player/{{ overall_champion.id }}">{{ overall_champion.canonical_name }}</a>
+                </div>
+                <div class="champion-stat">
+                    {{ overall_champion.total_count }} Total Records
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+</div>
+{% endif %}
 
 <div class="dashboard-grid">
 

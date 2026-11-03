@@ -266,13 +266,50 @@ def index():
     )
 
     # --------------------------------------------------------
+    # Champions - players with most records
+    # --------------------------------------------------------
+
+    # Player with most #1 records (World Record Champion)
+    top1_champion = query_one(
+        """
+        SELECT
+            p.id,
+            p.canonical_name,
+            COUNT(*) AS rank1_count
+        FROM records r
+        JOIN player_aliases pa ON pa.id = r.player_alias_id
+        JOIN players p ON p.id = pa.player_id
+        WHERE r.rank = 1
+        GROUP BY p.id
+        ORDER BY rank1_count DESC
+        LIMIT 1
+        """
+    )
+
+    # Player with most total records (Overall Champion)
+    overall_champion = query_one(
+        """
+        SELECT
+            p.id,
+            p.canonical_name,
+            COUNT(*) AS total_count
+        FROM records r
+        JOIN player_aliases pa ON pa.id = r.player_alias_id
+        JOIN players p ON p.id = pa.player_id
+        GROUP BY p.id
+        ORDER BY total_count DESC
+        LIMIT 1
+        """
+    )
+
+    # --------------------------------------------------------
     # Current top record holders
     #
     # records is already the current leaderboard.
     #
     # There is NO need to select a particular scrape.
     # --------------------------------------------------------
-
+    
     top_holders = query_all(
         """
         SELECT
@@ -384,6 +421,8 @@ def index():
         latest_scrape=latest_scrape,
         recent_records=recent_records,
         recent_top1=recent_top1,
+        top1_champion=top1_champion,
+        overall_champion=overall_champion,
         top_holders=top_holders,
         format_time=format_time,
     )

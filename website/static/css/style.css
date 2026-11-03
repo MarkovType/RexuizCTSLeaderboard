@@ -171,7 +171,7 @@ nav a:hover {
 
     padding: 50px;
 
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 
     border:
     1px solid #3a1812;
@@ -941,3 +941,53 @@ tr:hover td {
 
 }
 
+/* ============================================================
+ *   Champions Board
+ *   ============================================================ */
+
+.champions-board {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 0px 0px;
+}
+
+.champions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.champion-card {
+    background: linear-gradient(135deg, var(--panel2) 0%, var(--panel) 100%);
+    /*border: 1px solid var(--border)*/;
+    padding: 20px;
+    text-align: center;
+}
+
+.champion-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+.champion-name {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.champion-name a {
+    color: var(--gold);
+    text-decoration: none;
+}
+
+.champion-name a:hover {
+    text-decoration: underline;
+}
+
+.champion-stat {
+    font-size: 14px;
+    color: var(--muted);
+}
