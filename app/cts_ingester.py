@@ -937,7 +937,7 @@ def player_has_duplicate_on_map(
         (map_id, player_alias_id, exclude_rank, exclude_rank)
     )
     row = cursor.fetchone()
-    return row["rank"] if row else None
+    return row[0] if row else None
 
 def ensure_database_schema(conn):
     """
