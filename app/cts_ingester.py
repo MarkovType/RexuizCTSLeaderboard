@@ -1416,6 +1416,73 @@ def save_record_change(
     )
 
 # ============================================================
+# CSV VALIDATION
+# ============================================================
+
+def validate_csv_for_duplicates():
+    """
+    Validate the CSV file before importing to detect duplicate players on the same map.
+
+    For each map, check if any player appears more than once. If duplicates are found,
+    only the entry with the lowest rank (best position) should be kept.
+
+    Returns:
+        A dictionary mapping (map_name, player_name, rank) to the lowest rank found.
+        Entries in this dict should be skipped during import.
+
+    Raises:
+        ValueError: If the CSV file cannot be read or has invalid format.
+    """
+    duplicates_to_skip = {}
+
+    if not CSV_FILE.exists():
+        raise ValueError(f"CSV file not found: {CSV_FILE}")
+
+    with CSV_FILE.open(
+        "r",
+        encoding="utf-8-sig",
+        newline=""
+    ) as f:
+        reader = csv.DictReader(f)
+
+        # Track all entries: {(map_name, player_name): [ranks]}
+        player_map_entries = {}
+
+        for row in reader:
+            map_name = (row["Map"] or "").strip()
+
+            if not map_name:
+                continue
+
+            # Process each rank position
+            for rank in range(1, 11):
+                time_text = (row.get(f"Time #{rank}", "") or "").strip()
+                player_name = (row.get(f"Player #{rank}", "") or "").strip()
+
+                # Skip empty or invalid entries
+                if not time_text or not player_name:
+                    continue
+
+                key = (map_name, player_name)
+
+                if key not in player_map_entries:
+                    player_map_entries[key] = []
+
+                player_map_entries[key].append(rank)
+
+        # Identify duplicates and determine which to skip
+        for (map_name, player_name), ranks in player_map_entries.items():
+            if len(ranks) > 1:
+                # Multiple entries for same player on same map
+                lowest_rank = min(ranks)
+                # Mark all non-lowest ranks for skipping
+                for rank in ranks:
+                    if rank != lowest_rank:
+                        duplicates_to_skip[(map_name, player_name, rank)] = lowest_rank
+
+    return duplicates_to_skip
+
+# ============================================================
 # IMPORT
 # ============================================================
 
@@ -1430,6 +1497,20 @@ def import_csv(
     ).isoformat(
         timespec="seconds"
     )
+
+    # --------------------------------------------------------
+    # Pre-import validation: Check for duplicate players on same map
+    # --------------------------------------------------------
+
+    print("Validating CSV for duplicate players on same map...")
+    duplicates_to_skip = validate_csv_for_duplicates()
+
+    if duplicates_to_skip:
+        print(f"Found {len(duplicates_to_skip)} duplicate entries to skip.")
+        for (map_name, player_name, rank), lowest_rank in duplicates_to_skip.items():
+            print(f"  SKIP: {player_name} rank {rank} on {map_name} (keeping rank {lowest_rank})")
+    else:
+        print("No duplicate players found on same map.")
 
     # --------------------------------------------------------
     # Everything related to this scrape is transactional.
@@ -1556,6 +1637,18 @@ def import_csv(
                         not time_text
                         or not player_name
                     ):
+                        continue
+
+                    # ----------------------------------------
+                    # Check for duplicates: skip if this is not the lowest rank
+                    # for this player on this map
+                    # ----------------------------------------
+
+                    if (map_name, player_name, rank) in duplicates_to_skip:
+                        print(
+                            f"  SKIPPING: {player_name} rank {rank} on {map_name} "
+                            f"(duplicate, keeping rank {duplicates_to_skip[(map_name, player_name, rank)]})"
+                        )
                         continue
 
                     # ----------------------------------------
