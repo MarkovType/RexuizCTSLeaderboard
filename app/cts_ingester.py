@@ -9,6 +9,8 @@ from urllib.parse import unquote
 import requests
 from lxml import etree
 
+import sys
+from datetime import datetime
 
 # ============================================================
 # CONFIGURATION
@@ -27,6 +29,19 @@ ALIAS_FILE = BASE_DIR / "player_aliases.csv"
 # Database schema version for the new record/history model.
 DATABASE_SCHEMA_VERSION = 2
 
+# Setup log file with timestamp
+LOG_FILE = BASE_DIR / f"cts_ingester_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+
+# Redirect stdout to log file
+sys.stdout = open(LOG_FILE, 'a', encoding='utf-8')
+
+# Also redirect stderr to the same file
+sys.stderr = sys.stdout
+
+# Print header with timestamp
+print(f"\n{'='*60}")
+print(f"CTS Ingest Start: {datetime.now().isoformat()}")
+print(f"{'='*60}\n")
 
 # ============================================================
 # HASH
