@@ -30,7 +30,7 @@ ALIAS_FILE = BASE_DIR / "player_aliases.csv"
 DATABASE_SCHEMA_VERSION = 2
 
 # Setup log file with timestamp
-LOG_FILE = BASE_DIR / f"cts_ingester_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+LOG_FILE = BASE_DIR / f"log" / f"cts_ingester_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
 # Redirect stdout to log file
 sys.stdout = open(LOG_FILE, 'a', encoding='utf-8')
